@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 const ALLOWED_ORIGINS = [
   'https://cizah.com',
   'https://www.cizah.com',
+  'https://admin.cizah.com',
   'http://localhost:5173',
   'http://localhost:8080',
   'http://localhost:3000',
