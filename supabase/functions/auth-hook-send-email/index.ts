@@ -11,9 +11,52 @@
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const APP_URL = Deno.env.get('APP_URL') || 'https://cizah.com';
-const HOOK_SECRET = Deno.env.get('SEND_EMAIL_HOOK_SECRET');
+const HOOK_SECRET = Deno.env.get('SEND_EMAIL_HOOK_SECRET')?.trim();
 const FROM_EMAIL = 'hello@cizah.com';
 const FROM_NAME = 'Cizah';
+
+// ─── Auth verification ────────────────────────────────────────────────────────
+// Supabase sends the hook secret as: Authorization: Bearer <secret>
+// Depending on Supabase version it may send:
+//   (a) the raw secret string as the Bearer token, OR
+//   (b) a HS256 JWT signed with the base64-decoded whsec_ key
+// We try both. Function is deployed --no-verify-jwt so Supabase can reach it.
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
+
+async function verifyHookSecret(authHeader: string | null): Promise<boolean> {
+  if (!HOOK_SECRET) return true;
+  if (!authHeader) return false;
+
+  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
+
+  // Approach 1: raw secret sent directly as Bearer token
+  if (timingSafeEqual(bearer, HOOK_SECRET)) return true;
+
+  // Approach 2: JWT signed with the base64-decoded whsec_ key (HS256)
+  try {
+    const match = HOOK_SECRET.match(/whsec_([A-Za-z0-9+/=]+)/);
+    if (match) {
+      const keyBytes = Uint8Array.from(atob(match[1]), c => c.charCodeAt(0));
+      const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+      const parts = bearer.split('.');
+      if (parts.length === 3) {
+        const toVerify = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
+        const sig = Uint8Array.from(atob(parts[2].replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(parts[2].length / 4) * 4, '=')), c => c.charCodeAt(0));
+        if (await crypto.subtle.verify('HMAC', key, sig, toVerify)) return true;
+      }
+    }
+  } catch (_) { /* not a JWT */ }
+
+  return false;
+}
 
 
 // ─── Shared layout ────────────────────────────────────────────────────────────
@@ -143,11 +186,19 @@ async function sendViaResend(to: string, subject: string, html: string): Promise
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
-  // Only accept POST
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
 
+
+  // Verify the request is genuinely from Supabase
+  if (!await verifyHookSecret(req.headers.get('Authorization'))) {
+    console.error('[auth-hook] Unauthorized — secret mismatch');
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 
   let body: {
     user: { email: string; user_metadata?: { name?: string } };
