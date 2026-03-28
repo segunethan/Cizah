@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Users, LogOut, Wallet, Menu, Shield } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, Menu, Shield } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,12 +36,9 @@ const AdminSidebar = ({ currentPage }: AdminSidebarProps) => {
     <div className="flex flex-col h-full">
       <div className="p-6 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center">
-            <Wallet className="w-5 h-5 text-primary-foreground" />
-          </div>
           <div>
-            <span className="text-lg font-bold">Cizah</span>
-            <span className="text-xs block text-muted-foreground">Tax Admin</span>
+            <Logo size="md" />
+            <span className="text-xs block text-muted-foreground mt-0.5">Tax Admin</span>
           </div>
         </div>
         {adminInfo.name && (
@@ -89,10 +87,7 @@ const AdminSidebar = ({ currentPage }: AdminSidebarProps) => {
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center">
-              <Wallet className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-bold">Cizah Admin</span>
+            <Logo size="sm" />
           </div>
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>

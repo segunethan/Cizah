@@ -1,7 +1,8 @@
 import { useState, useEffect, forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Mail, Loader2, RefreshCw, CheckCircle2, Wallet } from 'lucide-react';
+import { Mail, Loader2, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -117,10 +118,7 @@ const EmailVerificationPending = forwardRef<HTMLDivElement, EmailVerificationPen
       >
         {/* Mobile Logo */}
         <div className="flex items-center gap-3 mb-8 lg:hidden">
-          <div className="w-12 h-12 gradient-primary rounded-xl flex items-center justify-center">
-            <Wallet className="w-6 h-6 text-primary-foreground" />
-          </div>
-          <span className="text-2xl font-bold text-foreground">Ciza</span>
+          <Logo size="md" />
         </div>
 
         <div className="text-center mb-8">

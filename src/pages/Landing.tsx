@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { ArrowRight, Shield, Calculator, FileText, CheckCircle, Zap, Users, Wallet, ArrowUpCircle, ArrowDownCircle, TrendingUp } from 'lucide-react';
+import { ArrowRight, Shield, Calculator, FileText, CheckCircle, Zap, Users, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { Logo, LogoIcon } from '@/components/Logo';
 
 const features = [
   {
@@ -79,12 +80,7 @@ export default function Landing() {
 
       {/* ── Nav ── */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-4 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 gradient-primary rounded-lg flex items-center justify-center">
-            <Wallet className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <span className="font-bold text-lg tracking-tight text-foreground">Cizah</span>
-        </div>
+        <Logo size="sm" />
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/auth?view=login')}
@@ -142,9 +138,7 @@ export default function Landing() {
           <div ref={heroRef} className="mt-16 transition-transform duration-300 ease-out will-change-transform">
             <div className="bg-card border border-border rounded-2xl p-6 max-w-md mx-auto text-left shadow-card">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <Wallet className="w-5 h-5 text-primary" />
-                </div>
+                <LogoIcon size="sm" />
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">March 2026 · Monthly</p>
                   <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-medium">Approved</span>
@@ -242,12 +236,7 @@ export default function Landing() {
 
       {/* ── Footer ── */}
       <footer className="border-t border-border py-8 px-6 md:px-12 flex flex-col md:flex-row items-center justify-between gap-4 text-muted-foreground text-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 gradient-primary rounded-md flex items-center justify-center">
-            <Wallet className="w-3.5 h-3.5 text-primary-foreground" />
-          </div>
-          <span className="font-semibold text-foreground">Cizah</span>
-        </div>
+        <Logo size="xs" />
         <p>© {new Date().getFullYear()} Cizah. Lagos State Tax Management Platform.</p>
         <button
           onClick={() => navigate('/admin')}

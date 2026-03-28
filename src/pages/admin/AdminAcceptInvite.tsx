@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, Eye, EyeOff, Loader2, AlertCircle, CheckCircle, Wallet } from 'lucide-react';
+import { Shield, Eye, EyeOff, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 import { toast } from 'sonner';
 
 export default function AdminAcceptInvite() {
@@ -58,10 +59,7 @@ export default function AdminAcceptInvite() {
         <div className="absolute bottom-20 right-10 w-40 h-40 bg-primary/5 rounded-full blur-3xl" />
 
         <div className="flex items-center gap-3 relative z-10">
-          <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center">
-            <Wallet className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="text-xl font-bold text-foreground">Cizah</span>
+          <Logo size="md" />
           <span className="ml-1 text-xs bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-medium">Admin</span>
         </div>
 
@@ -86,10 +84,8 @@ export default function AdminAcceptInvite() {
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-background">
         <div className="w-full max-w-sm">
           <div className="flex items-center gap-2 mb-10 lg:hidden">
-            <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center">
-              <Wallet className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-lg text-foreground">Cizah Admin</span>
+            <Logo size="sm" />
+            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Admin</span>
           </div>
 
           {success ? (

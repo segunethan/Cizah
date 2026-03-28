@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, Loader2, Eye, EyeOff, Wallet } from 'lucide-react';
+import { Shield, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 import { toast } from 'sonner';
 
 const AdminLogin = () => {
@@ -66,9 +67,7 @@ const AdminLogin = () => {
           className="w-full max-w-md text-center"
         >
           <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl flex items-center justify-center">
-              <Wallet className="w-8 h-8 text-white" />
-            </div>
+            <Logo size="lg" />
           </div>
           
           <h1 className="text-4xl font-bold text-white mb-4">Ciza Tax Admin</h1>
@@ -102,10 +101,7 @@ const AdminLogin = () => {
         >
           {/* Mobile Logo */}
           <div className="flex items-center justify-center gap-3 mb-8 lg:hidden">
-            <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center">
-              <Wallet className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-foreground">Ciza Admin</span>
+            <Logo size="md" />
           </div>
 
           <Card className="shadow-xl border-border/50">

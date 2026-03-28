@@ -3,11 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Eye, EyeOff, Wallet } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import EmailVerificationPending from './EmailVerificationPending';
-import { sendEmail } from '@/lib/email';
 
 interface Phase1SignupProps {
   onComplete: (userId: string) => void;
@@ -74,13 +74,6 @@ const Phase1Signup = ({ onComplete, onSwitchToLogin }: Phase1SignupProps) => {
           setPendingEmail(email.trim());
           setStep('verification');
           toast.success('Please check your email to verify your account.');
-          // Send branded verification email via Resend
-          sendEmail({
-            type: 'verification',
-            to: email.trim(),
-            name: email.split('@')[0],
-            verificationUrl: `${window.location.origin}/auth`,
-          });
         }
       }
     } catch (error: any) {
@@ -118,10 +111,7 @@ const Phase1Signup = ({ onComplete, onSwitchToLogin }: Phase1SignupProps) => {
         >
           {/* Mobile Logo */}
           <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <div className="w-12 h-12 gradient-primary rounded-xl flex items-center justify-center">
-              <Wallet className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-2xl font-bold text-foreground">Ciza</span>
+            <Logo size="md" />
           </div>
 
           <h1 className="text-3xl lg:text-4xl font-bold text-foreground mb-2">

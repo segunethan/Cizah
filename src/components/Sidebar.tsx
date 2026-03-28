@@ -1,6 +1,7 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, FileText, BarChart3, Wallet, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, FileText, BarChart3, LogOut, User } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -36,10 +37,7 @@ const Sidebar = () => {
       {/* Logo */}
       <div className="p-6 border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center">
-            <Wallet className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="text-xl font-bold text-foreground">Ciza</span>
+          <Logo size="md" />
         </div>
       </div>
 

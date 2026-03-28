@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Wallet, ArrowLeft, FileText, Loader2, Calendar, CalendarDays } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, Calendar, CalendarDays } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -75,10 +76,7 @@ const Phase4Reliefs = ({ userId, onComplete, onBack }: Phase4ReliefsProps) => {
     >
       {/* Mobile Logo */}
       <div className="flex items-center gap-3 mb-6 lg:hidden">
-        <div className="w-12 h-12 gradient-primary rounded-xl flex items-center justify-center">
-          <Wallet className="w-6 h-6 text-primary-foreground" />
-        </div>
-        <span className="text-2xl font-bold text-foreground">Ciza</span>
+        <Logo size="md" />
       </div>
 
       <div className="flex items-center gap-3 mb-2">

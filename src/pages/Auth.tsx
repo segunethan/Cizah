@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowUpCircle, ArrowDownCircle, Wallet, TrendingUp } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, TrendingUp } from 'lucide-react';
+import { Logo, LogoIcon } from '@/components/Logo';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import OnboardingProgress from '@/components/onboarding/OnboardingProgress';
@@ -152,10 +153,7 @@ const Auth = () => {
         >
           {/* Logo */}
           <div className="flex items-center gap-3 mb-12">
-            <div className="w-12 h-12 gradient-primary rounded-xl flex items-center justify-center">
-              <Wallet className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-2xl font-bold text-foreground">Ciza</span>
+            <Logo size="lg" />
           </div>
 
           {/* Preview Cards */}
@@ -167,9 +165,7 @@ const Auth = () => {
               className="bg-card rounded-2xl p-6 shadow-card"
             >
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <Wallet className="w-5 h-5 text-primary" />
-                </div>
+                <LogoIcon size="sm" />
                 <span className="text-muted-foreground text-sm uppercase tracking-wide">Current Balance</span>
               </div>
               <p className="text-3xl font-bold text-primary">₦125,500</p>

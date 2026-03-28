@@ -4,7 +4,8 @@ import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowUpCircle, ArrowDownCircle, Settings, TrendingUp, PieChart, Wallet } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, Settings, TrendingUp, PieChart } from 'lucide-react';
+import { Logo, LogoIcon } from '@/components/Logo';
 
 const Onboarding = () => {
   const { completeOnboarding } = useApp();
@@ -39,10 +40,7 @@ const Onboarding = () => {
         >
           {/* Logo */}
           <div className="flex items-center gap-3 mb-12">
-            <div className="w-12 h-12 gradient-primary rounded-xl flex items-center justify-center">
-              <Wallet className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-2xl font-bold text-foreground">Ciza</span>
+            <Logo size="lg" />
           </div>
 
           {/* Preview Cards */}
@@ -54,9 +52,7 @@ const Onboarding = () => {
               className="bg-card rounded-2xl p-6 shadow-card"
             >
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <Wallet className="w-5 h-5 text-primary" />
-                </div>
+                <LogoIcon size="sm" />
                 <span className="text-muted-foreground text-sm uppercase tracking-wide">Current Balance</span>
               </div>
               <p className="text-3xl font-bold text-primary">₦125,500</p>
@@ -133,10 +129,7 @@ const Onboarding = () => {
         >
           {/* Mobile Logo */}
           <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <div className="w-12 h-12 gradient-primary rounded-xl flex items-center justify-center">
-              <Wallet className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-2xl font-bold text-foreground">Ciza</span>
+            <Logo size="md" />
           </div>
 
           <h1 className="text-3xl lg:text-4xl font-bold text-foreground mb-2">Welcome!</h1>
