@@ -1,0 +1,163 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.75rem;
+
+    /* Onyx semantic colors */
+    --inflow: 160 84% 39%;
+    --inflow-foreground: 0 0% 100%;
+    --inflow-muted: 160 84% 96%;
+    
+    --outflow: 0 84% 60%;
+    --outflow-foreground: 0 0% 100%;
+    --outflow-muted: 0 84% 96%;
+    
+    --deduction: 217 91% 60%;
+    --deduction-foreground: 0 0% 100%;
+    --deduction-muted: 217 91% 96%;
+    
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 91% 96%;
+    --sidebar-accent-foreground: 217 91% 60%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 217 91% 60%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(230 91% 65%) 100%);
+    --gradient-inflow: linear-gradient(135deg, hsl(160 84% 39%) 0%, hsl(160 74% 45%) 100%);
+    --gradient-outflow: linear-gradient(135deg, hsl(0 84% 60%) 0%, hsl(15 84% 60%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(210 40% 99%) 100%);
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 212 27% 84%;
+    
+    --inflow: 160 84% 39%;
+    --inflow-foreground: 0 0% 100%;
+    --inflow-muted: 160 84% 15%;
+    
+    --outflow: 0 84% 60%;
+    --outflow-foreground: 0 0% 100%;
+    --outflow-muted: 0 84% 15%;
+    
+    --deduction: 217 91% 60%;
+    --deduction-foreground: 0 0% 100%;
+    --deduction-muted: 217 91% 15%;
+    
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --sidebar-background: 222 47% 9%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 17%;
+    --sidebar-ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-urbanist antialiased;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .gradient-inflow {
+    background: var(--gradient-inflow);
+  }
+  
+  .gradient-outflow {
+    background: var(--gradient-outflow);
+  }
+  
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  
+  .shadow-card-hover {
+    box-shadow: var(--shadow-md);
+  }
+}
