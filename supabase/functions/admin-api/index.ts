@@ -35,8 +35,6 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-
     // Service role client — bypasses RLS for all data operations
     const adminDb = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false },
@@ -88,14 +86,10 @@ Deno.serve(async (req) => {
 
     // ── AUTHENTICATED ACTIONS — require Supabase JWT ──────────────────
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return fail('Unauthorized', 401);
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return fail('Unauthorized', 401);
 
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-      auth: { persistSession: false },
-    });
-
-    const { data: { user }, error: userErr } = await userClient.auth.getUser();
+    const jwt = authHeader.substring(7);
+    const { data: { user }, error: userErr } = await adminDb.auth.getUser(jwt);
     if (userErr || !user) return fail('Unauthorized', 401);
 
     // Verify admin profile
