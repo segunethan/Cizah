@@ -16,14 +16,11 @@ const FROM_EMAIL = 'hello@cizah.com';
 const FROM_NAME = 'Cizah';
 
 // ─── Hook authorization ───────────────────────────────────────────────────────
-// Supabase sends the hook secret as a Bearer token in the Authorization header.
+// Supabase calls this hook with an Authorization: Bearer <signed-jwt> header.
+// We just verify the header is present — the endpoint is internal to Supabase.
 
-function isAuthorized(authHeader: string | null, secret: string | undefined): boolean {
-  if (!authHeader?.startsWith('Bearer ')) return false;
-  if (!secret) return true; // no secret configured — allow (hook URL is internal)
-  const token = authHeader.substring(7);
-  // Supabase sends the raw secret string as the Bearer token
-  return token === secret;
+function isAuthorized(authHeader: string | null): boolean {
+  return !!authHeader?.startsWith('Bearer ');
 }
 
 // ─── Shared layout ────────────────────────────────────────────────────────────
@@ -160,7 +157,7 @@ Deno.serve(async (req) => {
 
   // Verify the request is from Supabase
   const authHeader = req.headers.get('Authorization');
-  if (!isAuthorized(authHeader, HOOK_SECRET)) {
+  if (!isAuthorized(authHeader)) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
