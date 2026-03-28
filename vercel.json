@@ -2,11 +2,6 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "has": [{ "type": "host", "value": "admin.cizah.com" }],
-      "destination": "/admin/$1"
-    },
-    {
-      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
