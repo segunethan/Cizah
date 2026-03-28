@@ -14,7 +14,7 @@ export const useUserReliefs = () => {
         .from('user_profiles')
         .select('selected_reliefs')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching user reliefs:', error);

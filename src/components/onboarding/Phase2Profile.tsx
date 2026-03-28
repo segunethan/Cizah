@@ -364,29 +364,38 @@ const Phase2Profile = ({ userId, onComplete, onBack }: Phase2ProfileProps) => {
     return true;
   };
 
-  // Save progress after each step using upsert to avoid duplicate key errors
+  // Save progress after each step — use UPDATE if row exists, INSERT if not
   const saveStepProgress = async (stepData: Record<string, unknown>) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const userEmail = user?.email || null;
-      
-      // Use upsert to avoid duplicate key constraint errors
-      // This will insert if not exists, update if exists
-      const { error } = await supabase
+      // First check if row exists
+      const { data: existing } = await supabase
         .from('user_profiles')
-        .upsert({
-          id: userId,
-          name: `${firstName.trim()} ${surname.trim()}`.trim() || 'User',
-          email: userEmail,
-          ...stepData,
-        }, {
-          onConflict: 'id',
-          ignoreDuplicates: false
-        });
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
 
-      if (error) {
-        // Don't show error to user, just log it - this shouldn't block their progress
-        console.error('Failed to save step progress:', error);
+      if (existing) {
+        // Row exists — just UPDATE, never touch tax_record_number
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({
+            name: `${firstName.trim()} ${surname.trim()}`.trim() || 'User',
+            ...stepData,
+          })
+          .eq('id', userId);
+        if (error) console.error('Failed to save step progress:', error);
+      } else {
+        // Row doesn't exist — INSERT (trigger will generate tax_record_number)
+        const { data: { user } } = await supabase.auth.getUser();
+        const { error } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: userId,
+            name: `${firstName.trim()} ${surname.trim()}`.trim() || 'User',
+            email: user?.email || null,
+            ...stepData,
+          });
+        if (error) console.error('Failed to save step progress:', error);
       }
     } catch (error) {
       console.error('Error saving step progress:', error);
@@ -518,15 +527,22 @@ const Phase2Profile = ({ userId, onComplete, onBack }: Phase2ProfileProps) => {
         return;
       }
 
-      const { error } = await supabase
+      // Check if row already exists to avoid re-triggering tax_record_number generation
+      const { data: existingRow } = await supabase
         .from('user_profiles')
-        .upsert({
-          id: userId,
-          name: `${firstName.trim()} ${surname.trim()}`,
-          email: userEmail,
-          ...validationResult.data,
-          onboarding_completed: true,
-        });
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const profilePayload = {
+        name: `${firstName.trim()} ${surname.trim()}`,
+        ...validationResult.data,
+        onboarding_completed: true,
+      };
+
+      const { error } = existingRow
+        ? await supabase.from('user_profiles').update(profilePayload).eq('id', userId)
+        : await supabase.from('user_profiles').insert({ id: userId, email: userEmail, ...profilePayload });
 
       if (error) throw error;
 
