@@ -15,13 +15,6 @@ const HOOK_SECRET = Deno.env.get('SEND_EMAIL_HOOK_SECRET');
 const FROM_EMAIL = 'hello@cizah.com';
 const FROM_NAME = 'Cizah';
 
-// ─── Hook authorization ───────────────────────────────────────────────────────
-// Supabase calls this hook with an Authorization: Bearer <signed-jwt> header.
-// We just verify the header is present — the endpoint is internal to Supabase.
-
-function isAuthorized(authHeader: string | null): boolean {
-  return !!authHeader?.startsWith('Bearer ');
-}
 
 // ─── Shared layout ────────────────────────────────────────────────────────────
 
@@ -155,14 +148,6 @@ Deno.serve(async (req) => {
     return new Response('Method not allowed', { status: 405 });
   }
 
-  // Verify the request is from Supabase
-  const authHeader = req.headers.get('Authorization');
-  if (!isAuthorized(authHeader)) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
 
   let body: {
     user: { email: string; user_metadata?: { name?: string } };
