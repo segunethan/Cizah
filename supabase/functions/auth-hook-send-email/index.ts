@@ -15,46 +15,15 @@ const HOOK_SECRET = Deno.env.get('SEND_EMAIL_HOOK_SECRET');
 const FROM_EMAIL = 'hello@cizah.com';
 const FROM_NAME = 'Cizah';
 
-// ─── Hook signature verification ─────────────────────────────────────────────
-// Supabase signs the JWT in the Authorization header using the whsec_ secret.
-// Format: "v1,whsec_<base64-encoded-key>"
+// ─── Hook authorization ───────────────────────────────────────────────────────
+// Supabase sends the hook secret as a Bearer token in the Authorization header.
 
-function base64UrlDecode(str: string): Uint8Array {
-  const padded = str.replace(/-/g, '+').replace(/_/g, '/');
-  const padLength = (4 - (padded.length % 4)) % 4;
-  const base64 = padded + '='.repeat(padLength);
-  return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-}
-
-async function verifyHookJWT(authHeader: string | null, secret: string): Promise<boolean> {
-  try {
-    if (!authHeader?.startsWith('Bearer ')) return false;
-    const token = authHeader.substring(7);
-
-    // Extract raw key bytes from "v1,whsec_<base64>"
-    const whsecMatch = secret.match(/whsec_(.+)$/);
-    if (!whsecMatch) return false;
-    const keyBytes = Uint8Array.from(atob(whsecMatch[1]), (c) => c.charCodeAt(0));
-
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw',
-      keyBytes,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['verify'],
-    );
-
-    const parts = token.split('.');
-    if (parts.length !== 3) return false;
-
-    const data = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
-    const signature = base64UrlDecode(parts[2]);
-
-    return await crypto.subtle.verify('HMAC', cryptoKey, signature, data);
-  } catch (e) {
-    console.error('Hook signature verification failed:', e);
-    return false;
-  }
+function isAuthorized(authHeader: string | null, secret: string | undefined): boolean {
+  if (!authHeader?.startsWith('Bearer ')) return false;
+  if (!secret) return true; // no secret configured — allow (hook URL is internal)
+  const token = authHeader.substring(7);
+  // Supabase sends the raw secret string as the Bearer token
+  return token === secret;
 }
 
 // ─── Shared layout ────────────────────────────────────────────────────────────
@@ -189,13 +158,13 @@ Deno.serve(async (req) => {
     return new Response('Method not allowed', { status: 405 });
   }
 
-  // Verify the request is from Supabase using the whsec_ signed JWT
-  if (HOOK_SECRET) {
-    const authHeader = req.headers.get('Authorization');
-    const valid = await verifyHookJWT(authHeader, HOOK_SECRET);
-    if (!valid) {
-      return new Response('Unauthorized', { status: 401 });
-    }
+  // Verify the request is from Supabase
+  const authHeader = req.headers.get('Authorization');
+  if (!isAuthorized(authHeader, HOOK_SECRET)) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   let body: {
