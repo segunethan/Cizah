@@ -20,6 +20,17 @@ function getCorsHeaders(origin: string | null): Record<string, string> {
 
 const APP_URL = Deno.env.get('APP_URL') || 'https://cizah.com';
 
+function sanitizeFileName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-100);
+}
+
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('Origin');
   const corsHeaders = getCorsHeaders(origin);
@@ -273,7 +284,7 @@ Deno.serve(async (req) => {
       }
 
       case 'confirm_payment': {
-        const { calculationId } = body;
+        const { calculationId, receiptBase64, receiptFileName } = body;
         if (!calculationId) return fail('Calculation ID required');
 
         const { data: calc, error: calcErr } = await adminDb
@@ -286,13 +297,25 @@ Deno.serve(async (req) => {
         if (calc.status !== 'paid')
           return fail(`Cannot confirm payment. Current status: ${calc.status}`);
 
+        const updateData: Record<string, unknown> = {
+          status: 'filed',
+          filed_at: new Date().toISOString(),
+          filed_by: adminProfile.id,
+        };
+
+        // Receipt/payment advice is optional at confirmation time — admin can attach it later via upload_receipt
+        if (receiptBase64 && receiptFileName) {
+          const path = `${calc.user_id}/${calculationId}-${Date.now()}-${sanitizeFileName(receiptFileName)}`;
+          const { error: uploadErr } = await adminDb.storage
+            .from('tax-receipts')
+            .upload(path, base64ToBytes(receiptBase64), { upsert: true });
+          if (uploadErr) return fail(`Receipt upload failed: ${uploadErr.message}`);
+          updateData.receipt_path = path;
+        }
+
         const { error: updateErr } = await adminDb
           .from('tax_calculations')
-          .update({
-            status: 'filed',
-            filed_at: new Date().toISOString(),
-            filed_by: adminProfile.id,
-          })
+          .update(updateData)
           .eq('id', calculationId);
         if (updateErr) throw updateErr;
 
@@ -309,7 +332,45 @@ Deno.serve(async (req) => {
           }
         } catch (e) { console.warn('Email failed:', e); }
 
-        return ok({ success: true });
+        return ok({ success: true, receiptPath: (updateData.receipt_path as string) ?? null });
+      }
+
+      case 'upload_receipt': {
+        const { calculationId, receiptBase64, receiptFileName } = body;
+        if (!calculationId) return fail('Calculation ID required');
+        if (!receiptBase64 || !receiptFileName) return fail('Receipt file is required');
+
+        const { data: calc, error: calcErr } = await adminDb
+          .from('tax_calculations')
+          .select('id, user_id')
+          .eq('id', calculationId)
+          .single();
+        if (calcErr || !calc) return fail('Tax calculation not found', 404);
+
+        const path = `${calc.user_id}/${calculationId}-${Date.now()}-${sanitizeFileName(receiptFileName)}`;
+        const { error: uploadErr } = await adminDb.storage
+          .from('tax-receipts')
+          .upload(path, base64ToBytes(receiptBase64), { upsert: true });
+        if (uploadErr) return fail(`Receipt upload failed: ${uploadErr.message}`);
+
+        const { error: updateErr } = await adminDb
+          .from('tax_calculations')
+          .update({ receipt_path: path })
+          .eq('id', calculationId);
+        if (updateErr) throw updateErr;
+
+        return ok({ success: true, receiptPath: path });
+      }
+
+      case 'get_signed_url': {
+        const { bucket, path } = body;
+        const ALLOWED_BUCKETS = ['tax-receipts', 'statements', 'evidence', 'passports'];
+        if (!bucket || !path) return fail('bucket and path are required');
+        if (!ALLOWED_BUCKETS.includes(bucket)) return fail('Invalid bucket');
+
+        const { data, error } = await adminDb.storage.from(bucket).createSignedUrl(path, 3600);
+        if (error) return fail(error.message);
+        return ok({ signedUrl: data.signedUrl });
       }
 
       case 'revisit_rejection': {

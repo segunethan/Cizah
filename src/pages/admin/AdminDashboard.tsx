@@ -19,9 +19,13 @@ import {
   CreditCard,
   Loader2,
   BadgeCheck,
+  Paperclip,
 } from 'lucide-react';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import { toast } from 'sonner';
+import { fileToBase64 } from '@/lib/storage';
+
+const MAX_RECEIPT_SIZE = 5 * 1024 * 1024; // 5MB
 
 interface DashboardMetrics {
   totalUsers: number;
@@ -46,6 +50,7 @@ interface TaxActivity {
   rejection_reason: string | null;
   payment_date: string | null;
   filed_at: string | null;
+  receipt_path: string | null;
   created_at: string;
   updated_at: string;
   user_name: string;
@@ -75,6 +80,7 @@ const AdminDashboard = () => {
   const [taxActivity, setTaxActivity] = useState<TaxActivity[]>([]);
   const [confirmingPayment, setConfirmingPayment] = useState<string | null>(null);
   const [revisitingCalc, setRevisitingCalc] = useState<string | null>(null);
+  const [receiptFiles, setReceiptFiles] = useState<Record<string, File | null>>({});
 
   useEffect(() => {
     fetchMetrics();
@@ -113,22 +119,38 @@ const AdminDashboard = () => {
   const handleConfirmPayment = async (calculationId: string) => {
     try {
       setConfirmingPayment(calculationId);
+
+      const receiptFile = receiptFiles[calculationId];
+      let receiptBase64: string | undefined;
+      let receiptFileName: string | undefined;
+
+      if (receiptFile) {
+        if (receiptFile.size > MAX_RECEIPT_SIZE) {
+          toast.error('Receipt file is too large (max 5MB)');
+          setConfirmingPayment(null);
+          return;
+        }
+        receiptBase64 = await fileToBase64(receiptFile);
+        receiptFileName = receiptFile.name;
+      }
+
       const { data, error } = await supabase.functions.invoke('admin-api', {
-        body: { action: 'confirm_payment', calculationId },
+        body: { action: 'confirm_payment', calculationId, receiptBase64, receiptFileName },
       });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
       toast.success('Payment confirmed successfully!');
-      
-      setTaxActivity(prev => 
-        prev.map(calc => 
-          calc.id === calculationId 
-            ? { ...calc, status: 'filed', filed_at: new Date().toISOString() } 
+
+      setTaxActivity(prev =>
+        prev.map(calc =>
+          calc.id === calculationId
+            ? { ...calc, status: 'filed', filed_at: new Date().toISOString(), receipt_path: data?.receiptPath ?? calc.receipt_path }
             : calc
         )
       );
+      setReceiptFiles(prev => ({ ...prev, [calculationId]: null }));
     } catch (error) {
       console.error('Error confirming payment:', error);
       toast.error('Failed to confirm payment');
@@ -378,6 +400,24 @@ const AdminDashboard = () => {
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0">
                         <span className="font-bold text-amber-600">{formatNaira(Number(item.tax_payable))}</span>
+                        <label
+                          className={`flex items-center gap-1 text-xs cursor-pointer px-2 py-1.5 rounded-md border ${
+                            receiptFiles[item.id] ? 'border-green-300 text-green-700 bg-green-50' : 'border-input text-muted-foreground hover:bg-muted'
+                          }`}
+                          title="Attach payment advice / receipt (optional)"
+                        >
+                          <Paperclip className="w-3.5 h-3.5" />
+                          {receiptFiles[item.id] ? receiptFiles[item.id]?.name.slice(0, 14) : 'Receipt'}
+                          <input
+                            type="file"
+                            accept="application/pdf,image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] ?? null;
+                              setReceiptFiles(prev => ({ ...prev, [item.id]: file }));
+                            }}
+                          />
+                        </label>
                         <Button
                           size="sm"
                           onClick={() => handleConfirmPayment(item.id)}

@@ -11,15 +11,15 @@ export const useTaxCalculations = () => {
     queryKey: ['tax-calculations', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
-      
+
       const { data, error } = await supabase
         .from('tax_calculations')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
-      
+
       return (data || []).map(calc => ({
         id: calc.id,
         userId: calc.user_id,
@@ -28,9 +28,9 @@ export const useTaxCalculations = () => {
         periodYear: calc.period_year,
         totalInflow: Number(calc.total_inflow),
         totalOutflow: Number(calc.total_outflow),
-        netInflow: Number(calc.net_inflow),
-        voluntaryGift: Number(calc.voluntary_gift),
-        otherExpenses: Number(calc.other_expenses),
+        netIncome: Number(calc.net_inflow),            // DB col: net_inflow
+        disallowableExpenses: Number(calc.voluntary_gift), // DB col: voluntary_gift
+        exemptIncome: Number(calc.other_expenses),     // DB col: other_expenses
         assessableIncome: Number(calc.assessable_income),
         totalReliefs: Number(calc.total_reliefs),
         chargeableIncome: Number(calc.chargeable_income),
@@ -43,6 +43,7 @@ export const useTaxCalculations = () => {
         paymentDate: calc.payment_date ? new Date(calc.payment_date) : undefined,
         filedAt: calc.filed_at ? new Date(calc.filed_at) : undefined,
         filedBy: calc.filed_by ?? undefined,
+        receiptPath: calc.receipt_path ?? undefined,
         createdAt: new Date(calc.created_at),
         updatedAt: new Date(calc.updated_at),
       })) as TaxCalculation[];
@@ -57,9 +58,9 @@ export const useTaxCalculations = () => {
       periodYear: number;
       totalInflow: number;
       totalOutflow: number;
-      netInflow: number;
-      voluntaryGift: number;
-      otherExpenses: number;
+      netIncome: number;
+      disallowableExpenses: number;
+      exemptIncome: number;
       assessableIncome: number;
       totalReliefs: number;
       chargeableIncome: number;
@@ -67,7 +68,7 @@ export const useTaxCalculations = () => {
       status: 'approved';
     }) => {
       if (!user?.id) throw new Error('Not authenticated');
-      
+
       const { data, error } = await supabase
         .from('tax_calculations')
         .insert({
@@ -77,9 +78,9 @@ export const useTaxCalculations = () => {
           period_year: params.periodYear,
           total_inflow: params.totalInflow,
           total_outflow: params.totalOutflow,
-          net_inflow: params.netInflow,
-          voluntary_gift: params.voluntaryGift,
-          other_expenses: params.otherExpenses,
+          net_inflow: params.netIncome,                  // stored in net_inflow column
+          voluntary_gift: params.disallowableExpenses,  // stored in voluntary_gift column
+          other_expenses: params.exemptIncome,           // stored in other_expenses column
           assessable_income: params.assessableIncome,
           total_reliefs: params.totalReliefs,
           chargeable_income: params.chargeableIncome,
@@ -88,7 +89,7 @@ export const useTaxCalculations = () => {
         })
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -98,21 +99,21 @@ export const useTaxCalculations = () => {
   });
 
   const updateTaxStatus = useMutation({
-    mutationFn: async ({ 
-      calculationId, 
-      status, 
+    mutationFn: async ({
+      calculationId,
+      status,
       rejectionReason,
       rejectionEvidenceUrl,
       userRejectionReason,
-    }: { 
-      calculationId: string; 
+    }: {
+      calculationId: string;
       status: 'approved' | 'rejected' | 'paid' | 'revisit';
       rejectionReason?: string;
       rejectionEvidenceUrl?: string;
       userRejectionReason?: string;
     }) => {
       const updateData: any = { status };
-      
+
       if (status === 'rejected') {
         if (userRejectionReason) {
           updateData.user_rejection_reason = userRejectionReason;
@@ -121,16 +122,16 @@ export const useTaxCalculations = () => {
           updateData.rejection_evidence_url = rejectionEvidenceUrl;
         }
       }
-      
+
       if (status === 'paid') {
         updateData.payment_date = new Date().toISOString();
       }
-      
+
       const { error } = await supabase
         .from('tax_calculations')
         .update(updateData)
         .eq('id', calculationId);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -138,14 +139,12 @@ export const useTaxCalculations = () => {
     },
   });
 
-  // Get the active calculation for a specific month+year - always match by month
   const getCalculationForPeriod = (month: number, year: number) => {
     return taxCalculations.find(calc => {
       return calc.periodMonth === month && calc.periodYear === year;
     });
   };
 
-  // Get the most recent pending tax calculation
   const pendingTaxCalculation = taxCalculations.find(calc => calc.status === 'pending');
 
   return {

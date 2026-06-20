@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { formatNaira } from '@/lib/format';
 import { calculateTaxBreakdown, getRecordsForPeriod } from '@/lib/taxCalculations';
-import { FinancialRecord } from '@/types/onyx';
+import { FinancialRecord, TaxpayerProfile, TAXPAYER_PROFILES } from '@/types/onyx';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -35,10 +35,14 @@ import {
   XCircle,
   Loader2,
   BadgeCheck,
+  Paperclip,
+  Download,
 } from 'lucide-react';
 import AdminSidebar from '@/components/admin/AdminSidebar';
-import { getSignedUrl, extractFilePath } from '@/lib/storage';
+import { getSignedUrl, extractFilePath, fileToBase64 } from '@/lib/storage';
 import PAYEBreakdownDialog from '@/components/admin/PAYEBreakdownPopover';
+
+const MAX_RECEIPT_SIZE = 5 * 1024 * 1024; // 5MB
 
 interface UserProfile {
   id: string;
@@ -79,6 +83,7 @@ interface UserProfile {
   bank_accounts_connected: boolean | null;
   selected_reliefs: string[] | null;
   tax_period_preference: string | null;
+  taxpayer_profile: string | null;
 }
 
 interface TaxCalcRow {
@@ -104,6 +109,7 @@ interface TaxCalcRow {
   payment_date: string | null;
   filed_at: string | null;
   filed_by: string | null;
+  receipt_path: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -141,6 +147,8 @@ const AdminUserDetail = () => {
   const [taxCalculations, setTaxCalculations] = useState<TaxCalcRow[]>([]);
   const [confirmingPayment, setConfirmingPayment] = useState<string | null>(null);
   const [revisitingCalc, setRevisitingCalc] = useState<string | null>(null);
+  const [receiptFiles, setReceiptFiles] = useState<Record<string, File | null>>({});
+  const [uploadingReceipt, setUploadingReceipt] = useState<string | null>(null);
 
   useEffect(() => {
     if (userId) {
@@ -216,28 +224,102 @@ const AdminUserDetail = () => {
   const handleConfirmPayment = async (calculationId: string) => {
     try {
       setConfirmingPayment(calculationId);
+
+      const receiptFile = receiptFiles[calculationId];
+      let receiptBase64: string | undefined;
+      let receiptFileName: string | undefined;
+
+      if (receiptFile) {
+        if (receiptFile.size > MAX_RECEIPT_SIZE) {
+          toast.error('Receipt file is too large (max 5MB)');
+          setConfirmingPayment(null);
+          return;
+        }
+        receiptBase64 = await fileToBase64(receiptFile);
+        receiptFileName = receiptFile.name;
+      }
+
       const { data, error } = await supabase.functions.invoke('admin-api', {
-        body: { action: 'confirm_payment', calculationId },
+        body: { action: 'confirm_payment', calculationId, receiptBase64, receiptFileName },
       });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
       toast.success('Payment confirmed successfully!');
-      
+
       // Refresh tax calculations
-      setTaxCalculations(prev => 
-        prev.map(calc => 
-          calc.id === calculationId 
-            ? { ...calc, status: 'filed', filed_at: new Date().toISOString() } 
+      setTaxCalculations(prev =>
+        prev.map(calc =>
+          calc.id === calculationId
+            ? { ...calc, status: 'filed', filed_at: new Date().toISOString(), receipt_path: data?.receiptPath ?? calc.receipt_path }
             : calc
         )
       );
+      setReceiptFiles(prev => ({ ...prev, [calculationId]: null }));
     } catch (error) {
       console.error('Error confirming payment:', error);
       toast.error('Failed to confirm payment');
     } finally {
       setConfirmingPayment(null);
+    }
+  };
+
+  const handleUploadReceipt = async (calculationId: string) => {
+    const receiptFile = receiptFiles[calculationId];
+    if (!receiptFile) {
+      toast.error('Please choose a file first');
+      return;
+    }
+    if (receiptFile.size > MAX_RECEIPT_SIZE) {
+      toast.error('Receipt file is too large (max 5MB)');
+      return;
+    }
+
+    try {
+      setUploadingReceipt(calculationId);
+      const receiptBase64 = await fileToBase64(receiptFile);
+      const { data, error } = await supabase.functions.invoke('admin-api', {
+        body: {
+          action: 'upload_receipt',
+          calculationId,
+          receiptBase64,
+          receiptFileName: receiptFile.name,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success('Receipt attached successfully!');
+
+      setTaxCalculations(prev =>
+        prev.map(calc =>
+          calc.id === calculationId ? { ...calc, receipt_path: data.receiptPath } : calc
+        )
+      );
+      setReceiptFiles(prev => ({ ...prev, [calculationId]: null }));
+    } catch (error) {
+      console.error('Error uploading receipt:', error);
+      toast.error('Failed to upload receipt');
+    } finally {
+      setUploadingReceipt(null);
+    }
+  };
+
+  const handleViewReceipt = async (path: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-api', {
+        body: { action: 'get_signed_url', bucket: 'tax-receipts', path },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      window.open(data.signedUrl, '_blank');
+    } catch (error) {
+      console.error('Error viewing receipt:', error);
+      toast.error('Failed to open receipt');
     }
   };
 
@@ -285,8 +367,12 @@ const AdminUserDetail = () => {
   }, [records, periodType, selectedYear, selectedMonth]);
 
   const taxBreakdown = useMemo(() => {
-    return calculateTaxBreakdown(filteredRecords, periodType);
-  }, [filteredRecords, periodType]);
+    return calculateTaxBreakdown(
+      filteredRecords,
+      periodType,
+      (user?.taxpayer_profile as TaxpayerProfile) ?? null
+    );
+  }, [filteredRecords, periodType, user?.taxpayer_profile]);
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return null;
@@ -549,9 +635,13 @@ const AdminUserDetail = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <DetailRow 
-                      label="Payment Frequency" 
-                      value={user.tax_period_preference === 'annually' ? 'Annual' : 'Monthly'} 
+                    <DetailRow
+                      label="Taxpayer Profile"
+                      value={TAXPAYER_PROFILES.find(p => p.value === user.taxpayer_profile)?.label ?? 'Not set'}
+                    />
+                    <DetailRow
+                      label="Payment Frequency"
+                      value={user.tax_period_preference === 'annually' ? 'Annual' : 'Monthly'}
                     />
                     {user.selected_reliefs && user.selected_reliefs.length > 0 ? (
                       <div className="py-3 border-t border-border/50">
@@ -635,18 +725,84 @@ const AdminUserDetail = () => {
 
                           {/* Confirm Payment Button */}
                           {calc.status === 'paid' && (
-                            <Button
-                              onClick={() => handleConfirmPayment(calc.id)}
-                              disabled={confirmingPayment === calc.id}
-                              className="w-full bg-green-600 hover:bg-green-700 text-white"
-                            >
-                              {confirmingPayment === calc.id ? (
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              ) : (
-                                <CheckCircle className="w-4 h-4 mr-2" />
+                            <div className="space-y-2">
+                              <label
+                                className={`flex items-center gap-2 text-xs cursor-pointer px-3 py-2 rounded-lg border ${
+                                  receiptFiles[calc.id] ? 'border-green-300 text-green-700 bg-green-50' : 'border-input text-muted-foreground hover:bg-muted'
+                                }`}
+                              >
+                                <Paperclip className="w-3.5 h-3.5" />
+                                {receiptFiles[calc.id] ? receiptFiles[calc.id]?.name : 'Attach payment advice / receipt (optional)'}
+                                <input
+                                  type="file"
+                                  accept="application/pdf,image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0] ?? null;
+                                    setReceiptFiles(prev => ({ ...prev, [calc.id]: file }));
+                                  }}
+                                />
+                              </label>
+                              <Button
+                                onClick={() => handleConfirmPayment(calc.id)}
+                                disabled={confirmingPayment === calc.id}
+                                className="w-full bg-green-600 hover:bg-green-700 text-white"
+                              >
+                                {confirmingPayment === calc.id ? (
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                )}
+                                Confirm Payment Received
+                              </Button>
+                            </div>
+                          )}
+
+                          {/* Receipt attach/replace + view for confirmed (filed) calculations */}
+                          {calc.status === 'filed' && (
+                            <div className="flex flex-wrap items-center gap-2">
+                              {calc.receipt_path && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleViewReceipt(calc.receipt_path!)}
+                                >
+                                  <Download className="w-3.5 h-3.5 mr-1.5" />
+                                  View Receipt
+                                </Button>
                               )}
-                              Confirm Payment Received
-                            </Button>
+                              <label
+                                className={`flex items-center gap-2 text-xs cursor-pointer px-3 py-2 rounded-lg border ${
+                                  receiptFiles[calc.id] ? 'border-green-300 text-green-700 bg-green-50' : 'border-input text-muted-foreground hover:bg-muted'
+                                }`}
+                              >
+                                <Paperclip className="w-3.5 h-3.5" />
+                                {receiptFiles[calc.id] ? receiptFiles[calc.id]?.name : (calc.receipt_path ? 'Replace receipt' : 'Attach receipt')}
+                                <input
+                                  type="file"
+                                  accept="application/pdf,image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0] ?? null;
+                                    setReceiptFiles(prev => ({ ...prev, [calc.id]: file }));
+                                  }}
+                                />
+                              </label>
+                              {receiptFiles[calc.id] && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleUploadReceipt(calc.id)}
+                                  disabled={uploadingReceipt === calc.id}
+                                >
+                                  {uploadingReceipt === calc.id ? (
+                                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                  ) : (
+                                    <Paperclip className="w-3.5 h-3.5 mr-1.5" />
+                                  )}
+                                  Upload
+                                </Button>
+                              )}
+                            </div>
                           )}
 
                           {/* Revisit Button for rejected calculations */}
@@ -793,20 +949,20 @@ const AdminUserDetail = () => {
                       <span className="font-semibold text-green-600">{formatNaira(taxBreakdown.totalInflow)}</span>
                     </div>
                     <div className="flex justify-between py-3 border-b">
-                      <span className="text-muted-foreground">Less: Total Outflow</span>
+                      <span className="text-muted-foreground">Less: Allowable Expenses</span>
                       <span className="font-semibold text-red-600">({formatNaira(taxBreakdown.totalOutflow)})</span>
                     </div>
                     <div className="flex justify-between py-3 border-b bg-slate-50 dark:bg-slate-800/50 px-3 rounded-lg">
-                      <span className="font-medium">Net Inflow</span>
-                      <span className="font-semibold">{formatNaira(taxBreakdown.netInflow)}</span>
+                      <span className="font-medium">Net Income</span>
+                      <span className="font-semibold">{formatNaira(taxBreakdown.netIncome)}</span>
                     </div>
                     <div className="flex justify-between py-3 border-b">
-                      <span className="text-muted-foreground">Add: Voluntary Gifts</span>
-                      <span className="font-semibold text-green-600">{formatNaira(taxBreakdown.voluntaryGift)}</span>
+                      <span className="text-muted-foreground">Add: Disallowable Expenses</span>
+                      <span className="font-semibold text-green-600">{formatNaira(taxBreakdown.disallowableExpenses)}</span>
                     </div>
                     <div className="flex justify-between py-3 border-b">
-                      <span className="text-muted-foreground">Less: Other Expenses</span>
-                      <span className="font-semibold text-red-600">({formatNaira(taxBreakdown.otherExpenses)})</span>
+                      <span className="text-muted-foreground">Less: Exempt Income</span>
+                      <span className="font-semibold text-red-600">({formatNaira(taxBreakdown.exemptIncome)})</span>
                     </div>
                     <div className="flex justify-between py-3 border-b bg-slate-50 dark:bg-slate-800/50 px-3 rounded-lg">
                       <span className="font-medium">Assessable Income</span>

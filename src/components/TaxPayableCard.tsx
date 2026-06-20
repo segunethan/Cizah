@@ -13,6 +13,7 @@ import { useTaxCalculations } from '@/hooks/useTaxCalculations';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { toast } from 'sonner';
 import { sendEmail, formatTaxPeriod } from '@/lib/email';
+import { getSignedUrl } from '@/lib/storage';
 import {
   Calculator,
   CheckCircle,
@@ -24,6 +25,7 @@ import {
   Copy,
   CreditCard,
   BadgeCheck,
+  Download,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useApp } from '@/contexts/AppContext';
@@ -78,9 +80,9 @@ const TaxPayableCard = ({ taxPayable, taxBreakdown, pendingCalculation }: TaxPay
           periodYear: selectedYear,
           totalInflow: taxBreakdown.totalInflow,
           totalOutflow: taxBreakdown.totalOutflow,
-          netInflow: taxBreakdown.netInflow,
-          voluntaryGift: taxBreakdown.voluntaryGift,
-          otherExpenses: taxBreakdown.otherExpenses,
+          netIncome: taxBreakdown.netIncome,
+          disallowableExpenses: taxBreakdown.disallowableExpenses,
+          exemptIncome: taxBreakdown.exemptIncome,
           assessableIncome: taxBreakdown.assessableIncome,
           totalReliefs: taxBreakdown.totalReliefs,
           chargeableIncome: taxBreakdown.chargeableIncome,
@@ -134,9 +136,9 @@ const TaxPayableCard = ({ taxPayable, taxBreakdown, pendingCalculation }: TaxPay
           periodYear: selectedYear,
           totalInflow: taxBreakdown.totalInflow,
           totalOutflow: taxBreakdown.totalOutflow,
-          netInflow: taxBreakdown.netInflow,
-          voluntaryGift: taxBreakdown.voluntaryGift,
-          otherExpenses: taxBreakdown.otherExpenses,
+          netIncome: taxBreakdown.netIncome,
+          disallowableExpenses: taxBreakdown.disallowableExpenses,
+          exemptIncome: taxBreakdown.exemptIncome,
           assessableIncome: taxBreakdown.assessableIncome,
           totalReliefs: taxBreakdown.totalReliefs,
           chargeableIncome: taxBreakdown.chargeableIncome,
@@ -167,6 +169,16 @@ const TaxPayableCard = ({ taxPayable, taxBreakdown, pendingCalculation }: TaxPay
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard`);
+  };
+
+  const handleDownloadReceipt = async () => {
+    if (!activeCalculation?.receiptPath) return;
+    const signedUrl = await getSignedUrl('tax-receipts', activeCalculation.receiptPath);
+    if (!signedUrl) {
+      toast.error('Failed to open receipt');
+      return;
+    }
+    window.open(signedUrl, '_blank');
   };
 
   const getStatusInfo = () => {
@@ -348,11 +360,23 @@ const TaxPayableCard = ({ taxPayable, taxBreakdown, pendingCalculation }: TaxPay
 
               {/* Filed/Confirmed */}
               {activeCalculation?.status === 'filed' && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg">
-                  <BadgeCheck className="w-5 h-5 text-primary" />
-                  <span className="text-sm font-medium text-primary">
-                    Payment Confirmed
-                  </span>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg">
+                    <BadgeCheck className="w-5 h-5 text-primary" />
+                    <span className="text-sm font-medium text-primary">
+                      Payment Confirmed
+                    </span>
+                  </div>
+                  {activeCalculation.receiptPath && (
+                    <Button
+                      onClick={handleDownloadReceipt}
+                      variant="outline"
+                      className="border-primary/30 text-primary hover:bg-primary/10"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Receipt
+                    </Button>
+                  )}
                 </div>
               )}
 

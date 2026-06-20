@@ -67,6 +67,19 @@ export function extractFilePath(url: string | null, bucket: string): string | nu
 }
 
 /**
+ * Read a File as a base64 string (without the `data:<mime>;base64,` prefix),
+ * for sending small files to an edge function as JSON.
+ */
+export function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
  * Upload a file to storage and return a signed URL.
  * 
  * @param bucket - The storage bucket name

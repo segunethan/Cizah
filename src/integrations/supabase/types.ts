@@ -22,6 +22,7 @@ export type Database = {
           apartment_style: string | null; apartment_type: string | null; rent_amount: number | null
           rent_agreement_url: string | null; rent_receipt_url: string | null; has_mortgage: boolean | null
           selected_reliefs: string[] | null; tax_period_preference: string
+          taxpayer_profile: string | null
           onboarding_completed: boolean; bank_accounts_connected: boolean
           created_at: string; updated_at: string
         }
@@ -29,7 +30,8 @@ export type Database = {
           surname?: string | null; first_name?: string | null; other_name?: string | null
           occupation?: string | null; identity_type?: string | null; identity_number?: string | null
           apartment_style?: string | null; num_banks?: number | null; selected_reliefs?: string[] | null
-          tax_period_preference?: string; onboarding_completed?: boolean; bank_accounts_connected?: boolean
+          tax_period_preference?: string; taxpayer_profile?: string | null
+          onboarding_completed?: boolean; bank_accounts_connected?: boolean
           [key: string]: unknown
         }
         Update: { [key: string]: unknown }
@@ -57,6 +59,7 @@ export type Database = {
           status: string; rejection_reason: string | null; rejection_evidence_url: string | null
           user_rejection_reason: string | null; payment_reference: string | null
           payment_date: string | null; filed_at: string | null; filed_by: string | null
+          receipt_path: string | null
           created_at: string; updated_at: string
         }
         Insert: {
