@@ -240,7 +240,7 @@ const AdminUserDetail = () => {
       }
 
       const { data, error } = await supabase.functions.invoke('admin-api', {
-        body: { action: 'confirm_payment', calculationId, receiptBase64, receiptFileName },
+        body: { action: 'confirm_payment', calculationId, receiptBase64, receiptFileName, receiptContentType: receiptFile?.type },
       });
 
       if (error) throw error;
@@ -285,6 +285,7 @@ const AdminUserDetail = () => {
           calculationId,
           receiptBase64,
           receiptFileName: receiptFile.name,
+          receiptContentType: receiptFile.type,
         },
       });
 
@@ -308,6 +309,7 @@ const AdminUserDetail = () => {
   };
 
   const handleViewReceipt = async (path: string) => {
+    const win = window.open('', '_blank');
     try {
       const { data, error } = await supabase.functions.invoke('admin-api', {
         body: { action: 'get_signed_url', bucket: 'tax-receipts', path },
@@ -316,10 +318,11 @@ const AdminUserDetail = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      window.open(data.signedUrl, '_blank');
+      if (win) win.location.href = data.signedUrl;
     } catch (error) {
       console.error('Error viewing receipt:', error);
       toast.error('Failed to open receipt');
+      win?.close();
     }
   };
 

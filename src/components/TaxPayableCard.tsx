@@ -173,12 +173,14 @@ const TaxPayableCard = ({ taxPayable, taxBreakdown, pendingCalculation }: TaxPay
 
   const handleDownloadReceipt = async () => {
     if (!activeCalculation?.receiptPath) return;
+    const win = window.open('', '_blank');
     const signedUrl = await getSignedUrl('tax-receipts', activeCalculation.receiptPath);
     if (!signedUrl) {
       toast.error('Failed to open receipt');
+      win?.close();
       return;
     }
-    window.open(signedUrl, '_blank');
+    if (win) win.location.href = signedUrl;
   };
 
   const getStatusInfo = () => {

@@ -284,7 +284,7 @@ Deno.serve(async (req) => {
       }
 
       case 'confirm_payment': {
-        const { calculationId, receiptBase64, receiptFileName } = body;
+        const { calculationId, receiptBase64, receiptFileName, receiptContentType } = body;
         if (!calculationId) return fail('Calculation ID required');
 
         const { data: calc, error: calcErr } = await adminDb
@@ -308,7 +308,10 @@ Deno.serve(async (req) => {
           const path = `${calc.user_id}/${calculationId}-${Date.now()}-${sanitizeFileName(receiptFileName)}`;
           const { error: uploadErr } = await adminDb.storage
             .from('tax-receipts')
-            .upload(path, base64ToBytes(receiptBase64), { upsert: true });
+            .upload(path, base64ToBytes(receiptBase64), {
+              upsert: true,
+              contentType: receiptContentType || 'application/octet-stream',
+            });
           if (uploadErr) return fail(`Receipt upload failed: ${uploadErr.message}`);
           updateData.receipt_path = path;
         }
@@ -336,7 +339,7 @@ Deno.serve(async (req) => {
       }
 
       case 'upload_receipt': {
-        const { calculationId, receiptBase64, receiptFileName } = body;
+        const { calculationId, receiptBase64, receiptFileName, receiptContentType } = body;
         if (!calculationId) return fail('Calculation ID required');
         if (!receiptBase64 || !receiptFileName) return fail('Receipt file is required');
 
@@ -350,7 +353,10 @@ Deno.serve(async (req) => {
         const path = `${calc.user_id}/${calculationId}-${Date.now()}-${sanitizeFileName(receiptFileName)}`;
         const { error: uploadErr } = await adminDb.storage
           .from('tax-receipts')
-          .upload(path, base64ToBytes(receiptBase64), { upsert: true });
+          .upload(path, base64ToBytes(receiptBase64), {
+            upsert: true,
+            contentType: receiptContentType || 'application/octet-stream',
+          });
         if (uploadErr) return fail(`Receipt upload failed: ${uploadErr.message}`);
 
         const { error: updateErr } = await adminDb

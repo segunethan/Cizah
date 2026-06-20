@@ -135,7 +135,7 @@ const AdminDashboard = () => {
       }
 
       const { data, error } = await supabase.functions.invoke('admin-api', {
-        body: { action: 'confirm_payment', calculationId, receiptBase64, receiptFileName },
+        body: { action: 'confirm_payment', calculationId, receiptBase64, receiptFileName, receiptContentType: receiptFile?.type },
       });
 
       if (error) throw error;
