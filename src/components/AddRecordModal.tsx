@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/contexts/AppContext';
 import { RecordType, getCategoriesForType, FinancialRecord } from '@/types/claymoney';
 import { useUserReliefs } from '@/hooks/useUserReliefs';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,7 @@ const AddRecordModal = ({ isOpen, onClose, initialMode = 'manual' }: AddRecordMo
   const { addRecord, addRecords } = useApp();
   const { user } = useAuth();
   const { selectedReliefs } = useUserReliefs();
+  const { taxpayerProfile } = useUserProfile();
   const [mode, setMode] = useState<ModalMode>('manual');
   const [recordType, setRecordType] = useState<RecordType>('inflow');
   const [category, setCategory] = useState('');
@@ -47,9 +49,7 @@ const AddRecordModal = ({ isOpen, onClose, initialMode = 'manual' }: AddRecordMo
   const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Get categories based on type, filtering reliefs based on user selection.
-  // useUserReliefs fetches selected reliefs from the user profile.
-  const categories = getCategoriesForType(recordType, selectedReliefs);
+  const categories = getCategoriesForType(recordType, selectedReliefs, taxpayerProfile);
 
   // Sync mode when modal opens with initialMode
   useEffect(() => {

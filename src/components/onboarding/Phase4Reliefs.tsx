@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ArrowLeft, FileText, Loader2, Calendar, CalendarDays } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, Calendar, CalendarDays, User, Briefcase, Building2, Users } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { RELIEF_CATEGORIES, TaxPeriodPreference } from '@/types/onyx';
+import { RELIEF_CATEGORIES, TaxPeriodPreference, TaxpayerProfile, TAXPAYER_PROFILES } from '@/types/onyx';
 
 interface Phase4ReliefsProps {
   userId: string;
@@ -17,14 +17,22 @@ interface Phase4ReliefsProps {
   onBack: () => void;
 }
 
+const PROFILE_ICONS: Record<TaxpayerProfile, React.ComponentType<{ className?: string }>> = {
+  clergy: Users,
+  salary: Briefcase,
+  salary_hustle: Building2,
+  entrepreneur: User,
+};
+
 const Phase4Reliefs = ({ userId, onComplete, onBack }: Phase4ReliefsProps) => {
   const queryClient = useQueryClient();
+  const [taxpayerProfile, setTaxpayerProfile] = useState<TaxpayerProfile>('clergy');
   const [selectedReliefs, setSelectedReliefs] = useState<string[]>([]);
   const [taxPeriodPreference, setTaxPeriodPreference] = useState<TaxPeriodPreference>('monthly');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleReliefToggle = (relief: string) => {
-    setSelectedReliefs(prev => 
+    setSelectedReliefs(prev =>
       prev.includes(relief)
         ? prev.filter(r => r !== relief)
         : [...prev, relief]
@@ -33,11 +41,12 @@ const Phase4Reliefs = ({ userId, onComplete, onBack }: Phase4ReliefsProps) => {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    
+
     try {
       const { error } = await supabase
         .from('user_profiles')
         .update({
+          taxpayer_profile: taxpayerProfile,
           selected_reliefs: selectedReliefs,
           tax_period_preference: taxPeriodPreference,
           onboarding_completed: true,
@@ -46,17 +55,16 @@ const Phase4Reliefs = ({ userId, onComplete, onBack }: Phase4ReliefsProps) => {
 
       if (error) throw error;
 
-      // Invalidate profile cache so dashboard doesn't show the incomplete banner
       await queryClient.invalidateQueries({ queryKey: ['user-profile'] });
 
       toast({
         title: 'Setup Complete!',
-        description: 'Your relief preferences have been saved.',
+        description: 'Your tax preferences have been saved.',
       });
 
       onComplete();
     } catch (error: any) {
-      console.error('Error saving reliefs:', error);
+      console.error('Error saving preferences:', error);
       toast({
         title: 'Error',
         description: 'Failed to save preferences. Please try again.',
@@ -84,12 +92,48 @@ const Phase4Reliefs = ({ userId, onComplete, onBack }: Phase4ReliefsProps) => {
         <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Tax Preferences</h1>
       </div>
       <p className="text-muted-foreground mb-6">
-        Select your tax payment frequency and the reliefs that apply to you.
+        Tell us about your income situation so we can calculate your tax accurately.
       </p>
 
-      {/* Tax Period Selection */}
+      {/* ── Taxpayer Profile ──────────────────────────────────── */}
       <div className="mb-8">
-        <h2 className="text-lg font-semibold text-foreground mb-3">Tax Payment Frequency</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-1">Your Taxpayer Profile</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Choose the option that best describes your income source. This determines which income and expense categories are shown to you.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {TAXPAYER_PROFILES.map(({ value, label, description }) => {
+            const Icon = PROFILE_ICONS[value];
+            const isSelected = taxpayerProfile === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setTaxpayerProfile(value)}
+                className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all text-left ${
+                  isSelected
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border bg-secondary/30 hover:border-primary/50'
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  isSelected ? 'gradient-primary' : 'bg-secondary'
+                }`}>
+                  <Icon className={`w-5 h-5 ${isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
+                </div>
+                <div>
+                  <p className={`text-sm font-semibold ${isSelected ? 'text-primary' : 'text-foreground'}`}>{label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Tax Payment Frequency ──────────────────────────────── */}
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold text-foreground mb-1">Tax Payment Frequency</h2>
         <p className="text-sm text-muted-foreground mb-4">
           Choose whether you want to pay your taxes monthly or annually.
         </p>
@@ -144,8 +188,8 @@ const Phase4Reliefs = ({ userId, onComplete, onBack }: Phase4ReliefsProps) => {
         </RadioGroup>
       </div>
 
-      {/* Reliefs Section */}
-      <h2 className="text-lg font-semibold text-foreground mb-3">Tax Reliefs</h2>
+      {/* ── Tax Reliefs ───────────────────────────────────────── */}
+      <h2 className="text-lg font-semibold text-foreground mb-1">Tax Reliefs</h2>
       <p className="text-sm text-muted-foreground mb-4">
         Select the tax reliefs that apply to you. These will appear as categories when adding relief records.
       </p>
@@ -178,7 +222,7 @@ const Phase4Reliefs = ({ userId, onComplete, onBack }: Phase4ReliefsProps) => {
       </div>
 
       <p className="text-sm text-muted-foreground mb-6">
-        {selectedReliefs.length === 0 
+        {selectedReliefs.length === 0
           ? 'You can skip this step and add reliefs later from settings.'
           : `${selectedReliefs.length} relief${selectedReliefs.length > 1 ? 's' : ''} selected`
         }

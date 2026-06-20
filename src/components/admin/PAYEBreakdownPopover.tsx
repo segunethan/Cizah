@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { formatNaira } from '@/lib/format';
-import { TAX_BANDS_ANNUAL, TAX_BANDS_MONTHLY, TAX_EXEMPTION } from '@/types/onyx';
+import { TAX_BANDS_ANNUAL, TAX_BANDS_MONTHLY, TAX_EXEMPTION, TaxBand } from '@/types/onyx';
 import { Info, ChevronRight, Minus, Equal } from 'lucide-react';
 
 interface PAYEBreakdownDialogProps {
@@ -12,8 +12,8 @@ interface PAYEBreakdownDialogProps {
 }
 
 interface BandBreakdown {
-  bandMin: number;
-  bandMax: number;
+  bandStart: number;
+  bandEnd: number;
   rate: number;
   taxableAmount: number;
   taxAmount: number;
@@ -24,79 +24,72 @@ const calculateBandBreakdown = (
   periodType: 'monthly' | 'annually'
 ): { breakdown: BandBreakdown[]; taxableIncome: number; exemption: number } => {
   const exemption = periodType === 'annually' ? TAX_EXEMPTION.annual : TAX_EXEMPTION.monthly;
-  const bands = periodType === 'annually' ? TAX_BANDS_ANNUAL : TAX_BANDS_MONTHLY;
-  
-  // Subtract exemption
+  const bands: TaxBand[] = periodType === 'annually' ? TAX_BANDS_ANNUAL : TAX_BANDS_MONTHLY;
+
   const taxableIncome = Math.max(0, chargeableIncome - exemption);
-  
+
   if (taxableIncome <= 0) {
     return { breakdown: [], taxableIncome: 0, exemption };
   }
-  
+
   const breakdown: BandBreakdown[] = [];
-  let remainingIncome = taxableIncome;
-  
+  let remaining = taxableIncome;
+  let cursor = 0; // tracks cumulative position for display (above exemption)
+
   for (const band of bands) {
-    if (remainingIncome <= 0) break;
-    
-    const bandWidth = band.max === Infinity ? remainingIncome : band.max - band.min;
-    const taxableInBand = Math.min(remainingIncome, bandWidth);
-    const taxInBand = taxableInBand * band.rate;
-    
+    if (remaining <= 0) break;
+
+    const inBand = band.limit === Infinity
+      ? remaining
+      : Math.min(remaining, band.limit);
+    const taxInBand = inBand * band.rate;
+
     breakdown.push({
-      bandMin: band.min,
-      bandMax: band.max,
+      bandStart: exemption + cursor,
+      bandEnd: band.limit === Infinity ? Infinity : exemption + cursor + band.limit,
       rate: band.rate,
-      taxableAmount: taxableInBand,
+      taxableAmount: inBand,
       taxAmount: Math.round(taxInBand * 100) / 100,
     });
-    
-    remainingIncome -= taxableInBand;
+
+    cursor += band.limit === Infinity ? inBand : band.limit;
+    remaining -= inBand;
   }
-  
+
   return { breakdown, taxableIncome, exemption };
 };
 
-const formatBandRange = (min: number, max: number): string => {
-  if (max === Infinity) {
-    return `Above ${formatNaira(min)}`;
-  }
-  return `${formatNaira(min)} - ${formatNaira(max)}`;
+const formatBandRange = (start: number, end: number): string => {
+  if (end === Infinity) return `Above ${formatNaira(start)}`;
+  return `${formatNaira(start)} – ${formatNaira(end)}`;
 };
 
-const PAYEBreakdownDialog = ({ 
-  chargeableIncome, 
+const PAYEBreakdownDialog = ({
+  chargeableIncome,
   taxPayable,
-  periodType = 'annually'
+  periodType = 'annually',
 }: PAYEBreakdownDialogProps) => {
   const [open, setOpen] = useState(false);
   const { breakdown, taxableIncome, exemption } = calculateBandBreakdown(chargeableIncome, periodType);
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setOpen(true)}
-        className="gap-1.5"
-      >
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="gap-1.5">
         <Info className="w-3.5 h-3.5" />
         View details
       </Button>
-      
+
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              PAYE Tax Calculation
-            </DialogTitle>
+            <DialogTitle>PAYE Tax Calculation</DialogTitle>
             <DialogDescription>
               Detailed breakdown based on Nigerian PAYE tax bands ({periodType === 'monthly' ? 'Monthly' : 'Annual'})
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
-            {/* Step 1: Chargeable Income */}
+            {/* Step 1: Taxable Income */}
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Step 1: Calculate Taxable Income</p>
               <div className="bg-secondary/50 rounded-lg p-4 space-y-3">
@@ -120,8 +113,8 @@ const PAYEBreakdownDialog = ({
                 </div>
               </div>
             </div>
-            
-            {/* Step 2: Tax Bands Breakdown */}
+
+            {/* Step 2: Tax Bands */}
             {breakdown.length > 0 ? (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Step 2: Apply Tax Bands</p>
@@ -130,7 +123,7 @@ const PAYEBreakdownDialog = ({
                     <div key={index} className="bg-secondary/50 rounded-lg p-3">
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-xs font-medium text-muted-foreground">
-                          Band {index + 1}: {formatBandRange(band.bandMin, band.bandMax)}
+                          Band {index + 1}: {formatBandRange(band.bandStart, band.bandEnd)}
                         </span>
                         <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
                           {(band.rate * 100).toFixed(0)}%
@@ -158,8 +151,8 @@ const PAYEBreakdownDialog = ({
                 No tax applicable (income is zero or negative)
               </p>
             )}
-            
-            {/* Total Tax */}
+
+            {/* Total */}
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Tax Payable</p>
               <div className="flex justify-between items-center bg-primary/10 px-4 py-3 rounded-lg">
@@ -174,12 +167,11 @@ const PAYEBreakdownDialog = ({
               </div>
             </div>
 
-            {/* Summary Note */}
             <div className="bg-secondary/30 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
               <p className="font-medium">Calculation Summary:</p>
               <p>1. Subtract {periodType === 'monthly' ? '₦66,666.67 (monthly)' : '₦800,000 (annual)'} exemption from chargeable income</p>
-              <p>2. Apply progressive tax rates to the remaining taxable income</p>
-              <p>3. Sum all band taxes to get total PAYE tax payable</p>
+              <p>2. Apply progressive PAYE rates to the remaining taxable income</p>
+              <p>3. Sum all band taxes to get total tax payable</p>
             </div>
           </div>
         </DialogContent>

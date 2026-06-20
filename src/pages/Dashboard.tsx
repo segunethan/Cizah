@@ -44,7 +44,7 @@ const months = [
 const Dashboard = () => {
   const { user, records, selectedMonth, selectedYear, setSelectedMonth, setSelectedYear, isLoadingRecords } = useApp();
   const { user: authUser, isAuthenticated } = useAuth();
-  const { onboardingCompleted, taxPeriodPreference } = useUserProfile();
+  const { onboardingCompleted, taxPeriodPreference, taxpayerProfile } = useUserProfile();
   const { pendingTaxCalculation } = useTaxCalculations();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'manual' | 'upload'>('manual');
@@ -61,7 +61,7 @@ const Dashboard = () => {
   }, [records, selectedMonth, selectedYear]);
 
   const summary = useMemo(() => calculateSummary(filteredRecords), [filteredRecords]);
-  const taxBreakdown = useMemo(() => calculateTaxBreakdown(filteredRecords, taxPeriodPreference), [filteredRecords, taxPeriodPreference]);
+  const taxBreakdown = useMemo(() => calculateTaxBreakdown(filteredRecords, taxPeriodPreference, taxpayerProfile), [filteredRecords, taxPeriodPreference, taxpayerProfile]);
   const recentRecords = filteredRecords.slice(0, 5);
 
   const displayName = user?.name || authUser?.user_metadata?.name || 'User';

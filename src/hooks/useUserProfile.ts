@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { UserProfile, TaxPeriodPreference } from '@/types/onyx';
+import { UserProfile, TaxPeriodPreference, TaxpayerProfile } from '@/types/onyx';
 
 interface DbUserProfile {
   id: string;
@@ -10,17 +10,22 @@ interface DbUserProfile {
   phone: string | null;
   onboarding_completed: boolean | null;
   tax_period_preference: string | null;
+  taxpayer_profile: string | null;
   created_at: string;
   updated_at: string;
 }
 
-// Transform database profile to app profile
-const transformProfile = (dbProfile: DbUserProfile): UserProfile & { onboardingCompleted: boolean; taxPeriodPreference: TaxPeriodPreference } => ({
+const transformProfile = (dbProfile: DbUserProfile): UserProfile & {
+  onboardingCompleted: boolean;
+  taxPeriodPreference: TaxPeriodPreference;
+  taxpayerProfile: TaxpayerProfile | null;
+} => ({
   name: dbProfile.name,
   email: dbProfile.email || undefined,
   phone: dbProfile.phone || undefined,
   onboardingCompleted: dbProfile.onboarding_completed ?? false,
   taxPeriodPreference: (dbProfile.tax_period_preference as TaxPeriodPreference) || 'monthly',
+  taxpayerProfile: (dbProfile.taxpayer_profile as TaxpayerProfile) || null,
 });
 
 export const useUserProfile = () => {
@@ -34,7 +39,11 @@ export const useUserProfile = () => {
     refetch,
   } = useQuery({
     queryKey: ['user-profile', user?.id],
-    queryFn: async (): Promise<(UserProfile & { onboardingCompleted: boolean; taxPeriodPreference: TaxPeriodPreference }) | null> => {
+    queryFn: async (): Promise<(UserProfile & {
+      onboardingCompleted: boolean;
+      taxPeriodPreference: TaxPeriodPreference;
+      taxpayerProfile: TaxpayerProfile | null;
+    }) | null> => {
       if (!user?.id) return null;
 
       const { data, error } = await supabase
@@ -51,12 +60,15 @@ export const useUserProfile = () => {
       return data ? transformProfile(data) : null;
     },
     enabled: isAuthenticated && !!user?.id,
-    staleTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 1000 * 60 * 10,
   });
 
-  const profile = profileData ? { name: profileData.name, email: profileData.email, phone: profileData.phone } : null;
+  const profile = profileData
+    ? { name: profileData.name, email: profileData.email, phone: profileData.phone }
+    : null;
   const onboardingCompleted = profileData?.onboardingCompleted ?? false;
   const taxPeriodPreference = profileData?.taxPeriodPreference ?? 'monthly';
+  const taxpayerProfile = profileData?.taxpayerProfile ?? null;
 
   const createProfileMutation = useMutation({
     mutationFn: async (profileData: UserProfile) => {
@@ -105,13 +117,9 @@ export const useUserProfile = () => {
     },
   });
 
-  // Ensure profile exists (create if not)
   const ensureProfile = async (name: string, email?: string) => {
     if (!profile) {
-      await createProfileMutation.mutateAsync({
-        name,
-        email,
-      });
+      await createProfileMutation.mutateAsync({ name, email });
     }
   };
 
@@ -119,6 +127,7 @@ export const useUserProfile = () => {
     profile,
     onboardingCompleted,
     taxPeriodPreference,
+    taxpayerProfile,
     isLoading,
     error,
     refetch,
